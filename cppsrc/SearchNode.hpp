@@ -56,6 +56,22 @@ std::string urlDecode(const std::string &SRC) {
     return (ret);
 }
 
+
+struct Fingerprint {
+	int64_t value;
+	Fingerprint(const std::string& str) : value(0) {
+		for (char c : str) {
+			if (c >= 'a' && c <= 'z') value |= (1 << (c-'a'));
+			else if (c >= 'A' && c <= 'Z') value |= (1 << (c-'a'+26));
+			else if (c >= '0' && c <= '9') value |= (1 << (c-'a'+26+26));
+		}
+	}
+
+	bool contains(const Fingerprint& other) const {
+		return (other.value & value) == other.value;
+	}
+};
+
 class SearchNode {
     class IsIndexedHandler : public HttpRequestHandler {
         SearchNode& sm;
@@ -104,24 +120,27 @@ class SearchNode {
         }
     };
 
+
     struct File {
         std::string filename;
         std::string path;
-        std::string text;
+        std::vector<std::string> lines;
+        std::vector<Fingerprint> fingerprints;
 
         File(const std::string& filename,const std::string& path) : filename(filename),path(path) {
             ifstream f(path);
-            text=std::string((std::istreambuf_iterator<char>(f)),std::istreambuf_iterator<char>());
+            std::string line;
+            while(std::getline(f,line,'\n')) {
+            	lines.push_back(line);
+            	fingerprints.emplace_back(line);
+            }
         }
 
         void find(const std::string& needle, std::vector<std::string>& res) {
-            std::stringstream textStream(text);
-            std::string line;
-            uint64_t index=0;
-            while(std::getline(textStream,line,'\n')) {
-                ++index;
-                if (line.find(needle) != std::string::npos) {
-                    std::stringstream r; r << filename << ":" << index;
+            Fingerprint nf(needle);
+            for (uint64_t index=0; index<lines.size(); ++index) {
+                if (fingerprints[index].contains(nf) && lines[index].find(needle) != std::string::npos) {
+                    std::stringstream r; r << filename << ":" << index+1;
                     res.push_back(r.str());
                 }
             }
