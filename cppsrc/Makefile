@@ -7,7 +7,7 @@ httpcpp:
 	mkdir -p libs; \
 	cd libs; \
 	rm -rf httpcpp ; \
-	git clone git@github.com:henrik-muehe/httpcpp.git ; \
+	git clone https://github.com/henrik-muehe/httpcpp.git ; \
 	cd httpcpp ; \
 	make ; \
 	cp lib/* ../..

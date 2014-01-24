@@ -2,6 +2,13 @@
 
 set -e
 
+
+cd cppsrc
+make httpcpp
+make
+cd ..
+
+
 # Add or modify any build steps you need here
 cd "$(dirname "$0")"
 sbt="dependencies/sbt"
@@ -12,8 +19,3 @@ if [ ! -f "$sbt" ]; then
 fi
 
 "$sbt" assembly
-
-cd cppsrc
-make httpcpp
-make
-cd ..
