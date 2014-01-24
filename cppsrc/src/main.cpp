@@ -1,4 +1,4 @@
-#include "SearchNode.hpp"
+#include "SearchNodeWebserver.hpp"
 
 int main(int argc,char* argv[]) {
     std::vector<std::string> args(argv,argv+argc);
@@ -6,6 +6,6 @@ int main(int argc,char* argv[]) {
     int idIndex=0; for (; idIndex<args.size()-1 && args[idIndex]!="--id"; ++idIndex); ++idIndex; assert(idIndex < args.size()&&"--id arg not found");
     int id=atoi(args[idIndex].c_str());
 
-    SearchNode sm;
+    SearchNodeWebserver sm;
     sm.serve(9090 + id);
 }

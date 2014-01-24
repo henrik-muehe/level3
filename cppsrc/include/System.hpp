@@ -33,7 +33,34 @@ along with Fekaton.  If not, see <http://www.gnu.org/licenses/>.
 
 
 struct System
-{
+{   
+    /// Execute callback for all files at all levels of a directory
+    static void for_files(const std::string& path,std::function<void (const std::string&)> callback)  {
+        char *paths[] = {const_cast<char*>(path.c_str()), 0};
+        FTS *tree = fts_open(paths, FTS_NOCHDIR, 0);
+        if (!tree) {
+            perror("fts_open");
+            throw;
+        }
+
+        FTSENT *node;
+        while ((node = fts_read(tree))) {
+            if (node->fts_level > 0 && node->fts_name[0] == '.')
+                fts_set(tree, node, FTS_SKIP);
+            else if (node->fts_info & FTS_F) {
+                callback(node->fts_path);
+            }
+        }
+        if (errno) {
+            perror("fts_read");
+            throw;
+        }
+
+        if (fts_close(tree)) {
+            perror("fts_close");
+            throw;
+        }
+    }
     /// Retrieve 
     static int64_t getMem() {
         int64_t pageCount=sysconf(_SC_PHYS_PAGES);
