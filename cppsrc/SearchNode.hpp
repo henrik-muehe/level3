@@ -12,6 +12,7 @@
 #include <memory>
 #include <divsufsort.h>
 #include <lfs.h>
+#include <unordered_set>
 
 
 void for_files(const std::string& path,std::function<void (const std::string&)> callback)  {
@@ -192,13 +193,17 @@ class SearchNode {
 
         void find(const std::string& needle, std::vector<std::string>& res) {
             auto ms = sa.find(needle);
+            std::unordered_set<int64_t> usedLines;
             for (auto& m : ms) {
                 auto iter=std::lower_bound(linebreaks.begin(),linebreaks.end(),m);
                 std::stringstream r; 
-                r << filename << ":" << (std::distance(linebreaks.begin(),iter)+1);
+                auto line=(std::distance(linebreaks.begin(),iter)+1);
+                if (!usedLines.count(line)) {
+                    r << filename << ":" << line;
+                    usedLines.insert(line);
+                } else { continue; }
                 res.push_back(r.str());
             }
-
             /*Fingerprint nf(needle);
             for (uint64_t index=0; index<lines.size(); ++index) {
                 if (fingerprints[index].contains(nf) && lines[index].find(needle) != std::string::npos) {
