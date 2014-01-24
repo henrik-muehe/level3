@@ -25,6 +25,7 @@ int main(int argc,char* argv[]) {
     	sm.index(argv[1]);
 	});
 
+    //sm.find("subastringent");
     System::profile("Find", [&]() {
 	    for (int i=0; i<100; ++i) 
     		sm.find(random_string(15));

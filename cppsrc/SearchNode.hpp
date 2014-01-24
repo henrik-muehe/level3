@@ -9,6 +9,9 @@
 #include <stdint.h>
 #include <algorithm>
 #include <limits>
+#include <memory>
+#include <divsufsort.h>
+#include <lfs.h>
 
 
 void for_files(const std::string& path,std::function<void (const std::string&)> callback)  {
@@ -55,6 +58,51 @@ std::string urlDecode(const std::string &SRC) {
     }
     return (ret);
 }
+
+
+struct SuffixArray {
+    sauchar_t* T;
+    saidx_t* SA;
+    int64_t n;
+
+    /// Constructor
+    SuffixArray() : T(nullptr),SA(nullptr),n(0) {};
+    /// Constructor
+    SuffixArray(const std::string& str) : T(nullptr),SA(nullptr),n(str.length()) {
+        build(str);
+    }
+    /// Build from string
+    void build(const std::string& text) {
+        n=text.length();
+
+        releaseMemory();
+        T = (sauchar_t *)malloc((size_t)n * sizeof(sauchar_t));
+        SA = (saidx_t *)malloc((size_t)n * sizeof(saidx_t));
+        assert(T && SA && "Allocation failed.");
+        memcpy(T,text.c_str(),text.length());
+        assert(divsufsort(T, SA, (saidx_t)text.length()) == 0);
+    }
+    /// Find a string
+    std::vector<int64_t> find(const std::string& pattern) {
+        std::vector<int64_t> res;
+        saidx_t left;
+        saidx_t size = sa_search(T, (saidx_t)n,(const sauchar_t *)pattern.c_str(), (saidx_t)pattern.length(),SA, (saidx_t)n, &left);
+        for(saidx_t i = 0; i < size; ++i) {
+            res.push_back(SA[left + i]);
+        }
+        return res;
+    }
+    /// Destructor
+    ~SuffixArray() { releaseMemory(); }
+    /// Release memory
+    void releaseMemory() {
+        return;
+        free(T);
+        T=nullptr;
+        free(SA);
+        SA=nullptr;
+    }
+};
 
 
 struct Fingerprint {
@@ -126,6 +174,9 @@ class SearchNode {
         std::string path;
         std::vector<std::string> lines;
         std::vector<Fingerprint> fingerprints;
+        std::string text;
+        SuffixArray sa;
+        std::vector<int64_t> linebreaks;
 
         File(const std::string& filename,const std::string& path) : filename(filename),path(path) {
             ifstream f(path);
@@ -133,17 +184,28 @@ class SearchNode {
             while(std::getline(f,line,'\n')) {
             	lines.push_back(line);
             	fingerprints.emplace_back(line);
+                text+=line + "\n";
+                linebreaks.push_back(text.length());
             }
+            sa.build(text);
         }
 
         void find(const std::string& needle, std::vector<std::string>& res) {
-            Fingerprint nf(needle);
+            auto ms = sa.find(needle);
+            for (auto& m : ms) {
+                auto iter=std::lower_bound(linebreaks.begin(),linebreaks.end(),m);
+                std::stringstream r; 
+                r << filename << ":" << (std::distance(linebreaks.begin(),iter)+1);
+                res.push_back(r.str());
+            }
+
+            /*Fingerprint nf(needle);
             for (uint64_t index=0; index<lines.size(); ++index) {
                 if (fingerprints[index].contains(nf) && lines[index].find(needle) != std::string::npos) {
                     std::stringstream r; r << filename << ":" << index+1;
                     res.push_back(r.str());
                 }
-            }
+            }*/
         }
     };
 

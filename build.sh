@@ -4,6 +4,7 @@ set -e
 
 cd cppsrc
 make httpcpp
+make libdivsufsort
 make
 cd ..
 
