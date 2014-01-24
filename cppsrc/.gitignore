@@ -1,2 +1,5 @@
 libs
 main
+*.data*
+libhttpcpp.a
+runner

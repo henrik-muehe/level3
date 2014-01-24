@@ -1,7 +1,11 @@
-all: main
+all: main runner
 
-main: main.cpp
+main: main.cpp SearchNode.hpp
 	g++ -std=c++11 -O3 -g -pthread  -L libs/httpcpp/lib -I libs/httpcpp -o $@ $< -lhttpcpp
+
+runner: runner.cpp SearchNode.hpp
+	g++ -std=c++11 -O3 -g -pthread  -L libs/httpcpp/lib -I libs/httpcpp -o $@ $< -lhttpcpp
+
 httpcpp:
 	mkdir -p libs; \
 	cd libs; \
@@ -10,3 +14,6 @@ httpcpp:
 	cd httpcpp ; \
 	make ; \
 	cp lib/* ../..
+
+clean:
+	rm -f main runner

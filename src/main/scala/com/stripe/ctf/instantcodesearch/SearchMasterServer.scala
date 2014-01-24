@@ -3,6 +3,7 @@ package com.stripe.ctf.instantcodesearch
 import com.twitter.util.Future
 import org.jboss.netty.handler.codec.http.HttpResponseStatus
 import org.jboss.netty.util.CharsetUtil.UTF_8
+import java.util.Random
 
 class SearchMasterServer(port: Int, id: Int) extends AbstractSearchServer(port, id) {
   val NumNodes = 3
@@ -63,7 +64,11 @@ class SearchMasterServer(port: Int, id: Int) extends AbstractSearchServer(port, 
   }
 
   override def query(q: String) = {
-    val responses = clients.map {client => client.query(q)}
-    responses(0)
+    //val responses = clients.map {client => client.query(q)}
+    //responses(0)
+    val rand = new Random();
+    val random_index = rand.nextInt(clients.length);
+    //val responses = clients.map {client => client.query(q)}
+    clients(random_index).query(q)
   }
 }
