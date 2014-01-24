@@ -2,7 +2,6 @@
 
 set -e
 
-
 cd cppsrc
 make httpcpp
 make
