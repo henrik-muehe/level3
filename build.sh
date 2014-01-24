@@ -13,3 +13,7 @@ fi
 
 "$sbt" assembly
 
+cd cppsrc
+make httpcpp
+make
+cd ..
