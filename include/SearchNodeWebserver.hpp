@@ -15,12 +15,25 @@
 #include "Index.hpp"
 #include "Utils.hpp"
 #include "SuffixArray.hpp"
+#include "Timer.hpp"
 #include "System.hpp"
 
 
 class SearchNodeWebserver {
     /// The index
-    Index index;
+    std::vector<std::unique_ptr<Index>> indexes;
+
+    /// Handle true/false requests uniformly by checking whether indexing is done or not
+    class PingHandler : public HttpRequestHandler {
+        SearchNodeWebserver& sm;
+    public:
+        /// Constructor
+        PingHandler(SearchNodeWebserver& sm) : sm(sm) {}
+        /// Handler
+        void get(HttpRequest* const request, const vector<string>& args) {
+            this->reply(request, 200, args.front());
+        }
+    };  
 
     /// Handle true/false requests uniformly by checking whether indexing is done or not
     class IsIndexedHandler : public HttpRequestHandler {
@@ -30,7 +43,7 @@ class SearchNodeWebserver {
         IsIndexedHandler(SearchNodeWebserver& sm) : sm(sm) {}
         /// Handler
         void get(HttpRequest* const request, const vector<string>& args) {
-            if (sm.index.isIndexed()) {
+            if (sm.isIndexed()) {
                 this->reply(request, 200, "{\"success\": \"true\"}");
             } else {
                 this->reply(request, 200, "{\"success\": \"false\"}");
@@ -58,7 +71,9 @@ class SearchNodeWebserver {
         IndexHandler(SearchNodeWebserver& sm) : sm(sm) {}
         /// Handler
         void get(HttpRequest* const request, const vector<string>& args) {
-            sm.index.index(urlDecode(args.front()));
+            for (auto& index : sm.indexes) {
+                index->index(urlDecode(args.front()));
+            }
             this->reply(request, 200, "");
         }
     };
@@ -72,22 +87,38 @@ class SearchNodeWebserver {
         /// Handler
         void get(HttpRequest* const request, const vector<string>& args) {
             std::stringstream r;
+            Timer t;
             r << R"({ "success": "true", "results": [)";
             bool first=true;
-            for (auto e : sm.index.find(args.front())) {
+            for (auto e : sm.indexes.front()->find(args.front())) {
                 if (first) { first = !first; }
                 else { r << ","; }
                 r << "\"" << e << "\"" << "\n";
             }
             r << R"(]})";
+            std::cout << (t.getMicro()/1000.0) << std::endl;
             this->reply(request, 200, r.str());
         }
     };
+
+    SearchNodeWebserver() {
+        indexes.emplace_back(new Index(0));
+        indexes.emplace_back(new Index(1));
+        indexes.emplace_back(new Index(2));
+        indexes.emplace_back(new Index(3));
+    }
+
+    bool isIndexed() {
+        bool res = true;
+        for (auto& index : indexes) res &= index->isIndexed();
+        return res;
+    }
 
 public:
     /// Start server
     void serve(int port) {
         AsyncHttpServer* server = new AsyncHttpServer(port);
+        server->add_handler("^/ping?time=(.*?)$", new PingHandler(*this));
         server->add_handler("^/healthcheck$", new HealthCheckHandler(*this));
         server->add_handler("^/isIndexed$", new IsIndexedHandler(*this));
         server->add_handler("^/index\\?path=(.*?)$", new IndexHandler(*this));

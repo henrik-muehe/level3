@@ -105,4 +105,6 @@ public:
     bool isIndexed() const {
         return indexed;
     }
+
+    Index(int id=0) {}
 };
