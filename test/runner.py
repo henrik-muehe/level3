@@ -67,7 +67,6 @@ class Runner(test_framework.AbstractRunner):
             try:
                 if attempts > max_attempts:
                     raise error.StripeError("Unable to start server up")
-
                 body, code = self.client.request('GET', path)
                 if (code == 200) and ("true" in body):
                     return
