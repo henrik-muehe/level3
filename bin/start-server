@@ -4,7 +4,7 @@ if [[ "$1"  == *id* ]]
 then
   exec "cppsrc/main" $@
 else
-  exec "cppsrc/main" --id 0 $@
+  exec "perf" "record" "cppsrc/main" --id 0 $@
 fi
 
 set -eu

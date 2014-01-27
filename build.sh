@@ -8,6 +8,7 @@ make libdivsufsort
 make
 cd ..
 
+exit 0
 
 # Add or modify any build steps you need here
 cd "$(dirname "$0")"
