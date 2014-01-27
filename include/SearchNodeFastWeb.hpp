@@ -11,6 +11,7 @@
 #include <limits>
 #include <memory>
 #include <unordered_set>
+#include <thread>
 
 #include "Index.hpp"
 #include "Utils.hpp"
@@ -21,24 +22,28 @@
 #include <netinet/in.h>
 #include <stdio.h>
 
+#include <tbb/task.h>
+#include <tbb/task_group.h>
 
 
 
 
 
 struct SearchNodeFastWeb {
+    Index index;
+
     int listenfd,connfd,n;
-    struct sockaddr_in servaddr,cliaddr;
     socklen_t clilen;
     pid_t     childpid;
     char mesg[1000];
-
-    SearchNodeFastWeb() {
-    }
+    bool indexed=false;
+    std::unique_ptr<std::thread> indexThread;
+    tbb::task_group group;
 
     void serve(int port) {
         listenfd=socket(AF_INET,SOCK_STREAM,0);
 
+        sockaddr_in servaddr,cliaddr;
         bzero(&servaddr,sizeof(servaddr));
         servaddr.sin_family = AF_INET;
         servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
@@ -47,20 +52,64 @@ struct SearchNodeFastWeb {
 
         listen(listenfd,1024);
         for(;;) {
-            /*server->add_handler("^/ping?time=(.*?)$", new PingHandler(*this));
-            server->add_handler("^/healthcheck$", new HealthCheckHandler(*this));
-            server->add_handler("^/isIndexed$", new IsIndexedHandler(*this));
-            server->add_handler("^/index\\?path=(.*?)$", new IndexHandler(*this));
-            server->add_handler("^/\\?q=(.*?)$", new QueryHandler(*this));*/
-
-
             clilen=sizeof(cliaddr);
-            connfd = accept(listenfd,(struct sockaddr *)&cliaddr,&clilen);
-            n = recvfrom(connfd,mesg,1000,0,(struct sockaddr *)&cliaddr,&clilen);
-            sendto(connfd,mesg,n,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
-            mesg[n] = 0;
-            printf("%s",mesg);
-            close(connfd);
+            auto connfd = accept(listenfd,(struct sockaddr *)&cliaddr,&clilen);
+
+            group.run([&,connfd]() {
+                n = recvfrom(connfd,mesg,1000,0,(struct sockaddr *)&cliaddr,&clilen);
+                mesg[n] = 0;
+                printf("RECV: %s",mesg);
+
+                std::string reply;
+                if (mesg[5]=='h') {
+                    reply = "{\"success\": \"true\"}";
+                } else if (mesg[5]=='i'&&mesg[6]=='n') {
+                    const char* start = mesg+16;
+                    const char* end = start;
+                    for (; *end != ' '; ++end);
+                    std::string path(start,std::distance(start,end));
+                    index.index(urlDecode(path));
+                    indexed=true; //unsafe
+                } else if (mesg[5]=='i'&&mesg[6]=='s') {
+                    if (indexed) // unsafe
+                        reply = "{\"success\": \"true\"}";
+                    else
+                        reply = "{\"success\": \"false\"}";
+                } else if (mesg[6]=='q') {
+                    const char* start = mesg+8;
+                    const char* end = start;
+                    for (; *end != ' '; ++end);
+                    std::string word(start,std::distance(start,end));
+
+                    std::stringstream r;
+                    Timer t;
+                    r << R"({ "success": "true", "results": [)";
+                    bool first=true;
+                    for (auto e : index.find(word)) {
+                        if (first) { first = !first; }
+                        else { r << ","; }
+                        r << "\"" << e << "\"";
+                    }
+                    r << R"(]})";
+                    r << "\r\n";
+                    //std::cout << (t.getMicro()/1000.0) << std::endl;
+                    reply = r.str();
+
+                    //std::cout << "Finding >>" << word << "<<" << std::endl;
+                }
+
+                stringstream replyStream;
+                replyStream << "HTTP/1.1 200 OK\r\n";
+                replyStream << "Content-Length: " << reply.length() << "\r\n";
+                replyStream << "Content-Type: application/json\r\n";
+                replyStream << "\r\n";
+                replyStream << reply;
+
+                //std::cout << "SENDING: " << replyStream.str() << std::endl;
+
+                sendto(connfd,replyStream.str().c_str(),replyStream.str().length(),0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+                close(connfd);
+            });
         }
     }
 };

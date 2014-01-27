@@ -2,7 +2,9 @@
 
 if [[ "$1"  == *id* ]]
 then
-  cat /proc/cpuinfo
+  export LD_RUN_PATH=$PWD
+  export
+  ls -la
   exec "./main" $@
 else
   exec "./main" --id 0 $@
