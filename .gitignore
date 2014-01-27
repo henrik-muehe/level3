@@ -2,3 +2,8 @@ test
 level3.jar
 target
 project
+libs
+main
+*.data*
+libhttpcpp.a
+runner
