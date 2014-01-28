@@ -21,11 +21,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdio.h>
-
-#include <tbb/task.h>
-#include <tbb/task_group.h>
-
-
+#include <sys/socket.h>
+#include <stdlib.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <netinet/tcp.h>
 
 
 
@@ -38,10 +38,12 @@ struct SearchNodeFastWeb {
     char mesg[1000];
     bool indexed=false;
     std::unique_ptr<std::thread> indexThread;
-    tbb::task_group group;
 
     void serve(int port) {
         listenfd=socket(AF_INET,SOCK_STREAM,0);
+        int one = 1;
+        setsockopt(listenfd, SOL_TCP, TCP_NODELAY, &one, sizeof(one));
+        setsockopt(listenfd, SOL_TCP, TCP_QUICKACK, &one, sizeof(one));
 
         sockaddr_in servaddr,cliaddr;
         bzero(&servaddr,sizeof(servaddr));
@@ -54,11 +56,12 @@ struct SearchNodeFastWeb {
         for(;;) {
             clilen=sizeof(cliaddr);
             auto connfd = accept(listenfd,(struct sockaddr *)&cliaddr,&clilen);
+            setsockopt(connfd, SOL_TCP, TCP_NODELAY, &one, sizeof(one));
+            setsockopt(connfd, SOL_TCP, TCP_QUICKACK, &one, sizeof(one));
 
-            group.run([&,connfd]() {
                 n = recvfrom(connfd,mesg,1000,0,(struct sockaddr *)&cliaddr,&clilen);
                 mesg[n] = 0;
-                printf("RECV: %s",mesg);
+                //printf("RECV: %s",mesg);
 
                 std::string reply;
                 if (mesg[5]=='h') {
@@ -100,16 +103,14 @@ struct SearchNodeFastWeb {
 
                 stringstream replyStream;
                 replyStream << "HTTP/1.1 200 OK\r\n";
+                replyStream << "Connection: Keep-Alive\r\n";
                 replyStream << "Content-Length: " << reply.length() << "\r\n";
                 replyStream << "Content-Type: application/json\r\n";
                 replyStream << "\r\n";
                 replyStream << reply;
 
-                //std::cout << "SENDING: " << replyStream.str() << std::endl;
-
                 sendto(connfd,replyStream.str().c_str(),replyStream.str().length(),0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
                 close(connfd);
-            });
         }
     }
 };
@@ -165,7 +166,7 @@ struct SearchNodeFastWeb {
     };    
 
     /// Handle index calls by dispatching them to the index
-    class IndexHandler : public HttpRequestHandler {
+    class IndexHandler : public HttpRequestHandler {c
         SearchNodeWebserver& sm;
     public:
         /// Constructor
