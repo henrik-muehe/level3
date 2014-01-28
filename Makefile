@@ -1,10 +1,10 @@
 all: main runner
 
 main: src/main.cpp $(wildcard include/*.hpp) libs/libdivsufsort libs/httpcpp libs/tbb
-	g++ -std=c++11 -O3 -g -pthread -L . -I libs/tbb/include -I include -I libs/libdivsufsort/include -L libs/libdivsufsort/lib/.libs -L libs/httpcpp/lib -I libs -I libs/httpcpp -o $@ $< -lhttpcpp -ldivsufsort -ltbb
+	g++ -std=c++11 -O3 -g -pthread -L libs/tbb/build/linux*release/ -L . -I libs/tbb/include -I include -I libs/libdivsufsort/include -L libs/libdivsufsort/lib/.libs -L libs/httpcpp/lib -I libs -I libs/httpcpp -o $@ $< -lhttpcpp -ldivsufsort -ltbb
 
 runner: src/runner.cpp $(wildcard include/*.hpp) libs/libdivsufsort libs/httpcpp libs/tbb
-	g++ -std=c++11 -O3 -g -pthread -L . -I libs/tbb/include -I include -I libs/libdivsufsort/include -L libs/libdivsufsort/lib/.libs -L libs/httpcpp/lib -I libs -I libs/httpcpp -o $@ $< -lhttpcpp -ldivsufsort -ltbb
+	g++ -std=c++11 -O3 -g -pthread -L libs/tbb/build/linux*release/ -L . -I libs/tbb/include -I include -I libs/libdivsufsort/include -L libs/libdivsufsort/lib/.libs -L libs/httpcpp/lib -I libs -I libs/httpcpp -o $@ $< -lhttpcpp -ldivsufsort -ltbb
 
 clean:
 	rm -f main runner *.dSYM *.data*
@@ -39,4 +39,4 @@ libs/tbb:
 	rm tbb42_20131118oss_src.tgz ; \
 	cd tbb/src ; \
 	make tbb -j
-	mv libs/tbb/build/linux*release/*.so* .
+	#mv libs/tbb/build/linux*release/*.so* .

@@ -1,10 +1,11 @@
 #!/bin/bash
 
+P=$(readlink -f libs/tbb/build/linux*release)
+export LD_LIBRARY_PATH=$P:$LD_LIBRARY_PATH
+export LD_RUN_PATH=$P:$LD_RUN_PATH
+
 if [[ "$1"  == *id* ]]
 then
-  export LD_RUN_PATH=$PWD
-  export
-  ls -la
   exec "./main" $@
 else
   exec "./main" --id 0 $@
